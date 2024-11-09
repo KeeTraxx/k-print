@@ -8,7 +8,6 @@ clap = { version = "4.5.20", features = ["derive"] }
 image = "0.25.5"
 ipp = "5.0.5"
 log = "0.4.22"
-ratatui = "0.29.0"
 thiserror = "1.0.68"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
