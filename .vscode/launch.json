@@ -1,0 +1,45 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug executable 'rusty-photo-print'",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--bin=rusty-photo-print",
+                    "--package=rusty-photo-print"
+                ],
+                "filter": {
+                    "name": "rusty-photo-print",
+                    "kind": "bin"
+                }
+            },
+            "args": ["-p EPSON_ET-4750_Series", "-s na_index-4x6_4x6in", "-t pmphoto-high", "-f smily2.png"],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in executable 'rusty-photo-print'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--bin=rusty-photo-print",
+                    "--package=rusty-photo-print"
+                ],
+                "filter": {
+                    "name": "rusty-photo-print",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        }
+    ]
+}
