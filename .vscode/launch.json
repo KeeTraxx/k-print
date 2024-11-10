@@ -19,7 +19,7 @@
                     "kind": "bin"
                 }
             },
-            "args": ["-p EPSON_ET-4750_Series", "-s na_index-4x6_4x6in", "-t pmphoto-high", "-f smily2.png"],
+            "args": ["print", "-p EPSON_ET-4750_Series", "-s na_index-4x6_4x6in", "-t pmphoto-high", "-f smily2.png"],
             "cwd": "${workspaceFolder}"
         },
         {

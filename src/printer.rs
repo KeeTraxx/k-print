@@ -140,6 +140,14 @@ impl PaperDimension {
     }
 }
 
+pub struct IppJobAccepted {
+    pub job_uri: Uri,
+    pub job_state_enum: i32,
+    pub job_id: i32,
+    pub job_state_reasons: String,
+    pub job_state_message: String,
+}
+
 #[derive(Debug, Error)]
 enum PrinterError {
     #[error("No printers found")]
@@ -152,6 +160,8 @@ enum PrinterError {
     SpecifiedPaperTypeNotFound(PaperType),
     #[error("Can't guess paper type from name: {0}")]
     CouldNotGuessPaperDimensions(String),
+    #[error("IPP Error: Status Code: {0}")]
+    IppError(StatusCode),
 }
 
 pub fn get_printers(host: &Uri) -> Result<HashMap<String, Printer>, Box<dyn std::error::Error>> {
@@ -217,7 +227,7 @@ pub fn print_file(
     paper_size: &PaperSize,
     paper_type: &PaperType,
     file: &String,
-) -> Result<(), Box<dyn std::error::Error>> {
+) -> Result<Vec<IppJobAccepted>, Box<dyn std::error::Error>> {
     let printer = get_printer(&host, &printer_name)?;
 
     if !printer.has_paper_size(paper_size) {
@@ -242,6 +252,7 @@ pub fn print_file(
     let mut c = Cursor::new(Vec::new());
     img.write_to(&mut c, image::ImageFormat::Png)?;
     c.set_position(0);
+    img.save("out.png")?;
     let payload = IppPayload::new(c);
 
     let mut builder = IppOperationBuilder::print_job(client.uri().clone(), payload);
@@ -261,13 +272,44 @@ pub fn print_file(
     let resp = client.send(builder.build())?;
 
     if resp.header().status_code().is_success() {
-        println!("SUCCESS");
-        return Ok(());
+        let result: Vec<IppJobAccepted> = resp
+            .attributes()
+            .groups_of(DelimiterTag::JobAttributes)
+            .into_iter()
+            .map(|j| {
+                // let j = format!("{:#?}", j);
+                // j.attributes()[IppAttribute::JOB_ID].value();
+                IppJobAccepted {
+                    job_uri: j.attributes()[IppAttribute::JOB_URI]
+                        .value()
+                        .to_string()
+                        .parse()
+                        .unwrap(),
+                    job_id: j.attributes()[IppAttribute::JOB_ID]
+                        .value()
+                        .clone()
+                        .into_integer()
+                        .unwrap(),
+                    job_state_enum: j.attributes()[IppAttribute::JOB_STATE]
+                        .value()
+                        .as_enum()
+                        .unwrap()
+                        .clone(),
+                    job_state_reasons: j.attributes()[IppAttribute::JOB_STATE_REASONS]
+                        .value()
+                        .as_keyword()
+                        .unwrap()
+                        .clone(),
+                    job_state_message: j.attributes()["job-state-message"].value().to_string(),
+                }
+            })
+            .collect();
+        Ok(result)
     } else {
-        println!("ERRR {}", resp.header().status_code());
+        Err(Box::new(PrinterError::IppError(
+            resp.header().status_code(),
+        )))
     }
-
-    Ok(())
 }
 
 fn inch_to_mm(arg: f32) -> f32 {

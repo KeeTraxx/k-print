@@ -52,7 +52,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             let paper_size = PaperSize(media_size.trim().to_string());
             let paper_type = PaperType(media_type.trim().to_string());
             let file = file.trim().to_string();
-            printer::print_file(&uri, &printer_name, &paper_size, &paper_type, &file)?;
+            let ipp_jobs  = printer::print_file(&uri, &printer_name, &paper_size, &paper_type, &file)?;
+
+            for job in ipp_jobs {
+                println!("Printer accepted print job id: {} uri: {}", job.job_id, job.job_uri);
+            }
+
         }
         Commands::PrinterInfo { printer } => {
             
