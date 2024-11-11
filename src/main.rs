@@ -1,8 +1,9 @@
 mod image;
 mod printer;
+mod gui;
 
+use env_logger::{Builder, Env};
 use ipp::prelude::*;
-
 use clap::{Parser, Subcommand};
 use printer::{get_printer, PaperSize, PaperType, PrinterName};
 
@@ -35,9 +36,15 @@ enum Commands {
         #[arg(short, long)]
         printer: Option<String>,
     },
+
+    Gui {
+        #[arg()]
+        files: Vec<String>
+    }
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
+    Builder::from_env(Env::default().default_filter_or("info")).init();
     let cli = Cli::parse();
     let uri: Uri = cli.ipp_host.parse()?;
 
@@ -60,7 +67,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
         }
         Commands::PrinterInfo { printer } => {
-            
+            log::info!("Printer info");
             if printer.is_none() {
                 let printers = printer::get_printers(&uri)?;
                 for (_name, p) in printers.iter() {
@@ -71,6 +78,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 println!("{}", &p)
             }
         }
+        Commands::Gui { files } => {
+            // log::info!("Gui");
+            // println!("Files: {:#?}", files);
+            gui::gui_print(&uri, files)?;
+        },
     }
     Ok(())
 }

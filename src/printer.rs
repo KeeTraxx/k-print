@@ -149,7 +149,7 @@ pub struct IppJobAccepted {
 }
 
 #[derive(Debug, Error)]
-enum PrinterError {
+pub enum PrinterError {
     #[error("No printers found")]
     NoPrinters,
     #[error("Specified printer {0} not found!")]
