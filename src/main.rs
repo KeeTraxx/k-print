@@ -1,6 +1,7 @@
 mod image;
 mod printer;
 mod gui;
+mod printer_settings;
 
 use env_logger::{Builder, Env};
 use ipp::prelude::*;
@@ -81,7 +82,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         Commands::Gui { files } => {
             // log::info!("Gui");
             // println!("Files: {:#?}", files);
-            gui::gui_print(&uri, files)?;
+            gui::gui_print(&uri, &files.clone())?;
         },
     }
     Ok(())

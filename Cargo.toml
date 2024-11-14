@@ -7,11 +7,15 @@ edition = "2021"
 clap = { version = "4.5.20", features = ["derive"] }
 eframe = "0.29.1"
 egui = "0.29.1"
+egui_extras = { version = "0.29.1", features = ["image"] }
 env_logger = "0.11.5"
 image = "0.25.5"
-ipp = "5.0.5"
+ipp = { version = "5.0.5", features = ["client"] }
 log = "0.4.22"
 logger = "0.4.0"
+regex = "1.11.1"
+serde = "1.0.215"
 thiserror = "1.0.68"
+toml = "0.8.19"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html

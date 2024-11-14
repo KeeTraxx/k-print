@@ -1,28 +1,26 @@
 use core::fmt;
-use std::collections::{BTreeMap, HashMap, HashSet};
+use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::io::Cursor;
 
-use ipp::prelude::IppClient;
-
 use ipp::prelude::*;
+use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
 use crate::image::crop;
 
-#[derive(Debug, Clone)]
+#[derive(Deserialize, Serialize, Clone, Debug)]
 pub struct Printer {
     pub name: PrinterName,
     pub printer_uri: PrinterUri,
-    pub paper_sizes: HashSet<PaperSize>,
-    pub paper_types: HashSet<PaperType>,
+    pub paper_sizes: BTreeSet<PaperSize>,
+    pub paper_types: BTreeSet<PaperType>,
 }
-
 impl Printer {
-    fn has_paper_size(&self, paper_size: &PaperSize) -> bool {
+    pub fn has_paper_size(&self, paper_size: &PaperSize) -> bool {
         self.paper_sizes.contains(paper_size)
     }
 
-    fn has_paper_type(&self, paper_type: &PaperType) -> bool {
+    pub fn has_paper_type(&self, paper_type: &PaperType) -> bool {
         self.paper_types.contains(paper_type)
     }
 }
@@ -55,7 +53,7 @@ impl fmt::Display for Printer {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct PrinterName(pub String);
 impl fmt::Display for PrinterName {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -63,7 +61,7 @@ impl fmt::Display for PrinterName {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct PrinterUri(pub String);
 impl fmt::Display for PrinterUri {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -71,7 +69,7 @@ impl fmt::Display for PrinterUri {
     }
 }
 
-#[derive(Debug, Clone, Hash, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Debug, Clone, Hash, PartialEq, Eq, Ord, PartialOrd)]
 pub struct PaperSize(pub String);
 impl fmt::Display for PaperSize {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -101,7 +99,19 @@ impl PaperSize {
         } else if self.0.contains("3.5x5in") {
             width_mm = inch_to_mm(3.5);
             height_mm = inch_to_mm(5.0);
-        } else {
+        } else if self.0.contains("mm") {
+            let re = regex::Regex::new(r"([\d\.]+)x([\d\.]+)mm").unwrap();
+            let cap = re.captures_iter(&self.0).next().unwrap(); {
+                width_mm = cap[1].parse().unwrap();
+                height_mm = cap[2].parse().unwrap();
+            }
+        } else if self.0.contains("in") {
+            let re = regex::Regex::new(r"([\d\.]+)x([\d\.]+)in").unwrap();
+            let cap = re.captures_iter(&self.0).next().unwrap(); {
+                width_mm = inch_to_mm(cap[1].parse().unwrap());
+                height_mm = inch_to_mm(cap[2].parse().unwrap());
+            }
+        }else {
             return Err(Box::new(PrinterError::CouldNotGuessPaperDimensions(
                 self.0.clone(),
             )));
@@ -117,7 +127,7 @@ impl PaperSize {
     }
 }
 
-#[derive(Debug, Clone, Hash, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Debug, Clone, Hash, PartialEq, Eq, Ord, PartialOrd)]
 pub struct PaperType(pub String);
 impl fmt::Display for PaperType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -187,7 +197,7 @@ pub fn get_printers(host: &Uri) -> Result<HashMap<String, Printer>, Box<dyn std:
                         .value()
                         .to_string(),
                 ),
-                paper_sizes: HashSet::from_iter(
+                paper_sizes: BTreeSet::from_iter(
                     p.attributes()[IppAttribute::MEDIA_SUPPORTED]
                         .value()
                         .into_iter()
