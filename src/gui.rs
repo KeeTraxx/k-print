@@ -1,3 +1,5 @@
+use std::fs;
+
 use crate::{
     printer_settings::{self, PrinterSettings},
     Uri,
@@ -115,16 +117,47 @@ impl eframe::App for PrintGui {
                                 })
                                 .body(|mut body| {
                                     for file in self.files.clone() {
+                                        let f2 = file.clone();
                                         body.row(50.0, |mut row| {
                                             row.col(|ui| {
                                                 ui.label(file);
                                             });
-                                            row.col(|ui| {
-                                                ui.label("Ready");
-                                            });
-                                            row.col(|ui| {
-                                                ui.button("Print");
-                                            });
+                                            let f3 = f2.clone();
+                                            match fs::exists(f2).is_ok_and(|f| f == true) {
+                                                
+                                                true => {
+                                                    row.col(|ui| {
+                                                        ui.label("OK");
+                                                    });
+                                                    row.col(|ui| {
+                                                        if ui.button("Print").clicked() {
+                                                            
+                                                            match printer::print_file(
+                                                                &self.host,
+                                                                &self.printer_settings.printer.name,
+                                                                &self.printer_settings.media_size,
+                                                                &self.printer_settings.media_type,
+                                                                &f3,
+                                                            ) {
+                                                                Ok(_) => info!("printed"),
+                                                                Err(_) => error!("error printing"),
+                                                            }
+                                                        };
+                                                    });
+                                                    
+                                                },
+                                                false => {
+                                                    row.col(|ui| {
+                                                        ui.label("File not found");
+                                                    });
+                                                    row.col(|ui| {
+                                                        ui.add_enabled(false, egui::Button::new("Print"));
+                                                    });
+                                                },
+                                            };
+
+                                            
+                                            
                                         });
                                     }
                                 });
