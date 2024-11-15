@@ -1,8 +1,8 @@
-
 use crate::{
     printer_settings::{self, PrinterSettings},
     Uri,
 };
+use egui_extras::{Column, TableBuilder};
 use log::{error, info};
 
 use eframe::egui;
@@ -13,18 +13,11 @@ struct PrintGui {
     printer_settings: PrinterSettings,
     printers: Vec<printer::Printer>,
     files: Vec<String>,
-    host: Uri
+    host: Uri,
 }
 
 impl eframe::App for PrintGui {
     fn update(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
-        egui::CentralPanel::default().show(ctx, |ui: &mut egui::Ui| {
-            for file in self.files.clone() {
-                ui.label(file);
-            }
-            
-            // ui.image(egui::include_image!(), [800.0, 600.0]);
-        });
         egui::SidePanel::right("side_panel")
             .exact_width(320.0)
             .show(ctx, |ui: &mut egui::Ui| {
@@ -71,36 +64,99 @@ impl eframe::App for PrintGui {
                             );
                         }
                     });
-                
+
                 let dim = match self.printer_settings.media_size.guess_paper_dimensions() {
-                    Ok(dim) => format!("width: {}mm \n height:{}mm \n{}", dim.width_mm, dim.height_mm, if dim.borderless { "(Borderless)" } else { "" }),
+                    Ok(dim) => format!(
+                        "width: {}mm \n height:{}mm \n{}",
+                        dim.width_mm,
+                        dim.height_mm,
+                        if dim.borderless { "(Borderless)" } else { "" }
+                    ),
                     Err(_) => "Unknown".to_string(),
                 };
 
-                ui.label(format!(
-                    "Guessed paper dimensions: \n{}",
-                    dim
-                ));
-
-                let clicked = ui.button("test").clicked();
-
-                if clicked {
-                    // todo PRINT!!
-                    info!("saving settings...");
-
-                    match printer_settings::save_printer_settings(&self.printer_settings) {
-                        Ok(_) => info!("Saved!!"),
-                        Err(_) => error!("error saving settings!!"),
-                    }
-
-                    for file in self.files.clone() {
-                        match printer::print_file(&self.host, &printer.name, &self.printer_settings.media_size, &self.printer_settings.media_type, &file) {
-                            Ok(_) => log::info!("Printed {}", file),
-                            Err(_) => log::info!("Error printing {}", file),
-                        }
-                    }
-                }
+                ui.label(format!("Guessed paper dimensions: \n{}", dim));
             });
+
+        egui::CentralPanel::default().show(ctx, |ui: &mut egui::Ui| {
+            use egui_extras::{Size, StripBuilder};
+
+            StripBuilder::new(ui)
+                .size(Size::remainder().at_least(50.0))
+                .size(Size::exact(50.0))
+                .vertical(|mut strip| {
+                    strip.cell(|ui: &mut egui::Ui| {
+                        egui::ScrollArea::horizontal().show(ui, |ui| {
+                            let av = ui.available_height();
+
+                            let mut table = TableBuilder::new(ui)
+                                .striped(true)
+                                .resizable(false)
+                                .cell_layout(egui::Layout::left_to_right(egui::Align::LEFT))
+                                .column(Column::remainder().at_least(240.0).clip(true))
+                                .column(Column::auto()) // status
+                                .column(Column::auto())
+                                .min_scrolled_height(0.0)
+                                .max_scroll_height(av); // print button
+
+                            table
+                                .header(20.0, |mut header| {
+                                    header.col(|ui| {
+                                        ui.strong("File");
+                                    });
+
+                                    header.col(|ui| {
+                                        ui.strong("Status");
+                                    });
+
+                                    header.col(|ui| {
+                                        ui.strong("Actions");
+                                    });
+                                })
+                                .body(|mut body| {
+                                    for file in self.files.clone() {
+                                        body.row(50.0, |mut row| {
+                                            row.col(|ui| {
+                                                ui.label(file);
+                                            });
+                                            row.col(|ui| {
+                                                ui.label("Ready");
+                                            });
+                                            row.col(|ui| {
+                                                ui.button("Print");
+                                            });
+                                        });
+                                    }
+                                });
+                        });
+                    });
+                    strip.cell(|ui: &mut egui::Ui| {
+                        let clicked = ui.button("PRINTALL").clicked();
+                        if clicked {
+                            // todo PRINT!!
+                            info!("saving settings...");
+
+                            match printer_settings::save_printer_settings(&self.printer_settings) {
+                                Ok(_) => info!("Saved!!"),
+                                Err(_) => error!("error saving settings!!"),
+                            }
+
+                            for file in self.files.clone() {
+                                match printer::print_file(
+                                    &self.host,
+                                    &self.printer_settings.printer.name,
+                                    &self.printer_settings.media_size,
+                                    &self.printer_settings.media_type,
+                                    &file,
+                                ) {
+                                    Ok(_) => log::info!("Printed {}", file),
+                                    Err(_) => log::info!("Error printing {}", file),
+                                }
+                            }
+                        }
+                    });
+                });
+        });
     }
 }
 
@@ -125,7 +181,6 @@ pub fn gui_print(host: &Uri, files: &Vec<String>) -> Result<(), Box<dyn std::err
         "k-print",
         options,
         Box::new(move |_cc| {
-
             egui_extras::install_image_loaders(&_cc.egui_ctx);
 
             Ok(Box::<PrintGui>::new(PrintGui {
