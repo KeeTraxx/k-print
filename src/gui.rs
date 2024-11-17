@@ -94,8 +94,9 @@ impl eframe::App for PrintGui {
                             let mut table = TableBuilder::new(ui)
                                 .striped(true)
                                 .resizable(false)
-                                .cell_layout(egui::Layout::left_to_right(egui::Align::LEFT))
-                                .column(Column::remainder().at_least(240.0).clip(true))
+                                .cell_layout(egui::Layout::left_to_right(egui::Align::Center))
+                                .column(Column::auto().at_most(240.0)) // thumb
+                                .column(Column::remainder().at_least(120.0).clip(true))
                                 .column(Column::auto()) // status
                                 .column(Column::auto())
                                 .min_scrolled_height(0.0)
@@ -103,6 +104,9 @@ impl eframe::App for PrintGui {
 
                             table
                                 .header(20.0, |mut header| {
+                                    header.col(|ui| {
+                                        ui.strong("Thumbnail");
+                                    });
                                     header.col(|ui| {
                                         ui.strong("File");
                                     });
@@ -116,48 +120,47 @@ impl eframe::App for PrintGui {
                                     });
                                 })
                                 .body(|mut body| {
-                                    for file in self.files.clone() {
-                                        let f2 = file.clone();
-                                        body.row(50.0, |mut row| {
+                                    for file in self.files.iter() {
+                                        body.row(80.0, |mut row| {
+                                            row.col(|ui| {
+                                                let uri = format!("file://{file}");
+                                                ui.image(uri);
+                                            });
                                             row.col(|ui| {
                                                 ui.label(file);
                                             });
-                                            let f3 = f2.clone();
-                                            match fs::exists(f2).is_ok_and(|f| f == true) {
-                                                
+                                            match is_valid(file) {
                                                 true => {
                                                     row.col(|ui| {
                                                         ui.label("OK");
                                                     });
                                                     row.col(|ui| {
                                                         if ui.button("Print").clicked() {
-                                                            
                                                             match printer::print_file(
                                                                 &self.host,
                                                                 &self.printer_settings.printer.name,
                                                                 &self.printer_settings.media_size,
                                                                 &self.printer_settings.media_type,
-                                                                &f3,
+                                                                &file,
                                                             ) {
                                                                 Ok(_) => info!("printed"),
                                                                 Err(_) => error!("error printing"),
                                                             }
                                                         };
                                                     });
-                                                    
-                                                },
+                                                }
                                                 false => {
                                                     row.col(|ui| {
                                                         ui.label("File not found");
                                                     });
                                                     row.col(|ui| {
-                                                        ui.add_enabled(false, egui::Button::new("Print"));
+                                                        ui.add_enabled(
+                                                            false,
+                                                            egui::Button::new("Print"),
+                                                        );
                                                     });
-                                                },
+                                                }
                                             };
-
-                                            
-                                            
                                         });
                                     }
                                 });
@@ -174,7 +177,7 @@ impl eframe::App for PrintGui {
                                 Err(_) => error!("error saving settings!!"),
                             }
 
-                            for file in self.files.clone() {
+                            for file in self.files.iter().filter(|f| is_valid(f)) {
                                 match printer::print_file(
                                     &self.host,
                                     &self.printer_settings.printer.name,
@@ -191,6 +194,10 @@ impl eframe::App for PrintGui {
                 });
         });
     }
+}
+
+fn is_valid(file: &String) -> bool {
+    fs::exists(file).is_ok_and(|f| f == true)
 }
 
 pub fn gui_print(host: &Uri, files: &Vec<String>) -> Result<(), Box<dyn std::error::Error>> {
