@@ -14,7 +14,9 @@ struct Cli {
     #[arg(short, long, default_value = "ipp://localhost:631")]
     ipp_host: String,
     #[command(subcommand)]
-    command: Commands,
+    command: Option<Commands>,
+    #[arg()]
+    files: Vec<String>
 }
 
 #[derive(Subcommand)]
@@ -28,20 +30,12 @@ enum Commands {
 
         #[arg(short = 't', long)]
         media_type: String,
-
-        #[arg(short, long)]
-        file: String,
     },
 
     PrinterInfo {
         #[arg(short, long)]
         printer: Option<String>,
     },
-
-    Gui {
-        #[arg()]
-        files: Vec<String>
-    }
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -50,24 +44,22 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let uri: Uri = cli.ipp_host.parse()?;
 
     match &cli.command {
-        Commands::Print {
+        Some(Commands::Print {
             printer,
             media_size,
             media_type,
-            file,
-        } => {
+        }) => {
             let printer_name = PrinterName(printer.trim().to_string());
             let paper_size = PaperSize(media_size.trim().to_string());
             let paper_type = PaperType(media_type.trim().to_string());
-            let file = file.trim().to_string();
-            let ipp_jobs  = printer::print_file(&uri, &printer_name, &paper_size, &paper_type, &file)?;
-
-            for job in ipp_jobs {
-                println!("Printer accepted print job id: {} uri: {}", job.job_id, job.job_uri);
+            for file in cli.files.iter() {
+                let ipp_jobs  = printer::print_file(&uri, &printer_name, &paper_size, &paper_type, &file)?;
+                for job in ipp_jobs {
+                    println!("Printer accepted print job id: {} uri: {}", job.job_id, job.job_uri);
+                }
             }
-
         }
-        Commands::PrinterInfo { printer } => {
+        Some(Commands::PrinterInfo { printer }) => {
             log::info!("Printer info");
             if printer.is_none() {
                 let printers = printer::get_printers(&uri)?;
@@ -79,11 +71,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 println!("{}", &p)
             }
         }
-        Commands::Gui { files } => {
-            // log::info!("Gui");
-            // println!("Files: {:#?}", files);
-            gui::gui_print(&uri, &files.clone())?;
-        },
+        None => gui::gui_print(&uri, &cli.files)?,
     }
     Ok(())
 }

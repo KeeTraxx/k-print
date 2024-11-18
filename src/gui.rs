@@ -210,8 +210,6 @@ pub fn gui_print(host: &Uri, files: &Vec<String>) -> Result<(), Box<dyn std::err
 
     let state = printer_settings::load_printer_settings();
 
-    info!("Display GUI for files {:#?}", files);
-
     let options = eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default().with_inner_size([800.0, 600.0]),
         ..Default::default()
