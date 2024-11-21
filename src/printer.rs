@@ -1,6 +1,7 @@
 use core::fmt;
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::io::Cursor;
+use std::path::PathBuf;
 
 use ipp::prelude::*;
 use serde::{Deserialize, Serialize};
@@ -8,7 +9,7 @@ use thiserror::Error;
 
 use crate::image::crop;
 
-#[derive(Deserialize, Serialize, Clone, Debug)]
+#[derive(Deserialize, Serialize, Clone, Debug, PartialEq, Eq)]
 pub struct Printer {
     pub name: PrinterName,
     pub printer_uri: PrinterUri,
@@ -236,7 +237,7 @@ pub fn print_file(
     printer_name: &PrinterName,
     paper_size: &PaperSize,
     paper_type: &PaperType,
-    file: &String,
+    file: &PathBuf,
 ) -> Result<Vec<IppJobAccepted>, Box<dyn std::error::Error>> {
     let printer = get_printer(&host, &printer_name)?;
 
@@ -258,7 +259,7 @@ pub fn print_file(
     let (w, h) = paper_size
         .guess_paper_dimensions()?
         .to_pixel_dimensions(300.0);
-    let img = crop(file, w, h)?;
+    let img = crop(&file.display().to_string(), w, h)?;
     let mut c = Cursor::new(Vec::new());
     img.write_to(&mut c, image::ImageFormat::Png)?;
     c.set_position(0);

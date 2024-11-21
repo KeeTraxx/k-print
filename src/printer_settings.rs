@@ -2,13 +2,13 @@ use std::{env, fs};
 
 use serde::{Deserialize, Serialize};
 
-use crate::printer;
+use crate::printer::{self, *};
 
-#[derive(Deserialize, Serialize, Clone, Debug)]
+#[derive(Deserialize, Serialize, Clone, Debug, PartialEq, Eq)]
 pub struct PrinterSettings {
-    pub printer: printer::Printer,
-    pub media_type: printer::PaperType,
-    pub media_size: printer::PaperSize,
+    pub printer_name: PrinterName,
+    pub media_type: PaperType,
+    pub media_size: PaperSize,
 }
 impl PrinterSettings {
     /// Returns the default `PrinterSettings` instance.
@@ -20,55 +20,29 @@ impl PrinterSettings {
         let printers = printer::get_printers(&"ipp://localhost:631".parse().unwrap()).unwrap();
         let printer = printers.values().next().unwrap().clone();
         PrinterSettings {
-            printer: printer.clone(),
+            printer_name: printer.name.clone(),
             media_type: printer.paper_types.iter().next().unwrap().clone(),
             media_size: printer.paper_sizes.iter().next().unwrap().clone(),
         }
     }
 
-    /// Checks if the current settings are valid.
-    ///
-    /// This function checks all the settings in the `PrinterSettings` object,
-    /// and returns `true` if all of them are valid, and `false` otherwise.
-    ///
-    fn is_valid(&self) -> bool {
-        let printers = printer::get_printers(&"ipp://localhost:631".parse().unwrap()).unwrap();
+    pub fn save(&self) -> Result<(), Box<dyn std::error::Error>> {
+        let config = toml::to_string(self)?;
 
-        if printers.contains_key(&self.printer.name.0) == false {
-           return false;
-        }
+        fs::write(settings_file_path(), config)?;
 
-        let printer = printers.get(&self.printer.name.0).unwrap();
+        println!("Saved printer settings to {}", settings_file_path());
 
-        if printer.has_paper_size(&self.media_size) == false {
-            return false;
-        }
-
-        if printer.has_paper_type(&self.media_type) == false {
-            return false;
-        }
-
-        true
+        Ok(())
     }
 }
 
 pub(crate) fn load_printer_settings() -> PrinterSettings {
     fs::exists(settings_file_path())
         .and_then(|_| fs::read_to_string(settings_file_path()))
-        .map(|str| toml::from_str::<PrinterSettings>(&str).unwrap())
+        .map(|str| toml::from_str::<PrinterSettings>(&str))
+        .unwrap()
         .unwrap_or_else(|_| PrinterSettings::default())
-}
-
-pub(crate) fn save_printer_settings(
-    printer_settings: &PrinterSettings,
-) -> Result<(), Box<dyn std::error::Error>> {
-    let config = toml::to_string(printer_settings)?;
-
-    fs::write(settings_file_path(), config)?;
-
-    println!("Saved printer settings to {}", settings_file_path());
-
-    Ok(())
 }
 
 fn settings_file_path() -> String {

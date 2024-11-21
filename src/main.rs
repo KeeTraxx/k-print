@@ -1,12 +1,16 @@
+mod gui;
 mod image;
 mod printer;
-mod gui;
 mod printer_settings;
 
+use std::path::PathBuf;
+
+use clap::{Parser, Subcommand};
 use env_logger::{Builder, Env};
 use ipp::prelude::*;
-use clap::{Parser, Subcommand};
+use log::warn;
 use printer::{get_printer, PaperSize, PaperType, PrinterName};
+use rfd::FileDialog;
 
 #[derive(Parser)]
 #[command(version, about, long_about = None)]
@@ -16,7 +20,7 @@ struct Cli {
     #[command(subcommand)]
     command: Option<Commands>,
     #[arg()]
-    files: Vec<String>
+    files: Vec<PathBuf>,
 }
 
 #[derive(Subcommand)]
@@ -53,9 +57,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             let paper_size = PaperSize(media_size.trim().to_string());
             let paper_type = PaperType(media_type.trim().to_string());
             for file in cli.files.iter() {
-                let ipp_jobs  = printer::print_file(&uri, &printer_name, &paper_size, &paper_type, &file)?;
+                let ipp_jobs =
+                    printer::print_file(&uri, &printer_name, &paper_size, &paper_type, &file)?;
                 for job in ipp_jobs {
-                    println!("Printer accepted print job id: {} uri: {}", job.job_id, job.job_uri);
+                    println!(
+                        "Printer accepted print job id: {} uri: {}",
+                        job.job_id, job.job_uri
+                    );
                 }
             }
         }
@@ -71,7 +79,20 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 println!("{}", &p)
             }
         }
-        None => gui::gui_print(&uri, &cli.files)?,
+        None => {
+
+            if cli.files.is_empty() {
+
+                match FileDialog::new()
+                .add_filter("images", &["png", "jpg"])
+                .pick_files() {
+                    Some(files) => gui::gui_print(&uri, &files)?,
+                    None => warn!("No files selected"),
+                }
+            } else {
+                gui::gui_print(&uri, &cli.files)?
+            };
+        }
     }
     Ok(())
 }
