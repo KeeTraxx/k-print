@@ -80,17 +80,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             }
         }
         None => {
-
             if cli.files.is_empty() {
-
                 match FileDialog::new()
                 .add_filter("images", &["png", "jpg"])
                 .pick_files() {
-                    Some(files) => gui::gui_print(&uri, &files)?,
+                    Some(files) => gui::new_print_ui(&uri, &files),
                     None => warn!("No files selected"),
                 }
             } else {
-                gui::gui_print(&uri, &cli.files)?
+                gui::new_print_ui(&uri, &cli.files)
             };
         }
     }

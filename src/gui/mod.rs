@@ -1,6 +1,7 @@
 use std::{collections::HashMap, path::PathBuf};
 
 mod ui_image;
+mod message_box;
 
 use crate::{
     printer::*,
@@ -157,12 +158,30 @@ impl eframe::App for PrintGui {
     }
 }
 
-pub fn gui_print(host: &Uri, files: &Vec<PathBuf>) -> Result<(), Box<dyn std::error::Error>> {
-    let printers = printer::get_printers(host)?;
+pub fn new_print_ui(host: &Uri, files: &Vec<PathBuf>) {
+    let printers = match printer::get_printers(host) {
+        Ok(a) => a,
+        Err(b) => {
+            message_box::error(
+                "Failed to get printers".to_string(),
+                "err".to_string()
+            );
+            return;
+        },
+    };
 
     if printers.len() == 0 {
-        return Err(Box::new(printer::PrinterError::NoPrinters));
+        message_box::error(
+            "Failed to get printers".to_string(),
+            "err".to_string()
+        );
+        return;
     }
+
+    message_box::error(
+        "Failed to get printers".to_string(),
+        "err".to_string()
+    );
 
     let printer_settings = printer_settings::load_printer_settings();
 
@@ -171,7 +190,7 @@ pub fn gui_print(host: &Uri, files: &Vec<PathBuf>) -> Result<(), Box<dyn std::er
         ..Default::default()
     };
 
-    let res = eframe::run_native(
+    let _ = eframe::run_native(
         "k-print",
         options,
         Box::new(move |_cc| {
@@ -185,9 +204,4 @@ pub fn gui_print(host: &Uri, files: &Vec<PathBuf>) -> Result<(), Box<dyn std::er
             }))
         }),
     );
-
-    match res {
-        Ok(_) => Ok(()),
-        Err(e) => Err(Box::new(e)),
-    }
 }
