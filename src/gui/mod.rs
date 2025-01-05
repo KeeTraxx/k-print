@@ -178,11 +178,6 @@ pub fn new_print_ui(host: &Uri, files: &Vec<PathBuf>) {
         return;
     }
 
-    message_box::error(
-        "Failed to get printers".to_string(),
-        "err".to_string()
-    );
-
     let printer_settings = printer_settings::load_printer_settings();
 
     let options = eframe::NativeOptions {
